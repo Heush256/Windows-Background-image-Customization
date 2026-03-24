@@ -41,6 +41,7 @@ void add_to_list(ImageList *list, const char *filepath) {
         list->filepaths = realloc(list->filepaths, list->capacity * sizeof(char *));
         if (!list->filepaths) {
             fprintf(stderr, "Memory allocation failed!\n");
+            free(list->filepaths);
             exit(1);
         }
     }
@@ -50,14 +51,13 @@ void add_to_list(ImageList *list, const char *filepath) {
 
 // 3. The Recursive Search Function
 void search_images_recursive(const char *base_path, ImageList *list) {
-    DIR *dir;
     struct dirent *entry;
     
     // Try to open the directory. If it fails (e.g., permission denied), skip it.
-    if (!(dir = opendir(base_path))) {
+    if (!(/*dir = */opendir(base_path))) {
         return; 
     }
-    
+    DIR *dir = opendir(base_path);
     // Read directory entries one by one
     while ((entry = readdir(dir)) != NULL) {
         // Skip the current directory "." and parent directory ".." to prevent infinite loops
@@ -92,9 +92,7 @@ ImageList* get_all_images(const char *path) {
     list->capacity = 16; // Start with space for 16 items
     list->count = 0;
     list->filepaths = malloc(list->capacity * sizeof(char *));
-    
     search_images_recursive(path, list);
-    
     return list;
 }
 
@@ -106,56 +104,62 @@ void free_image_list(ImageList *list) {
     free(list->filepaths); // Free the array of pointers
     free(list);            // Free the struct itself
 }
+
 //Remove the extra ".."
 void remove_all_but_last(char* str, char char_to_keep) {
     // 1. Find the index of the last occurrence of the character
     char* last_occurrence_ptr = strrchr(str, char_to_keep);
-    int last_index = -1;
+    int last_index;
 
     if (last_occurrence_ptr != NULL) {
-        last_index = last_occurrence_ptr - str;
+        last_index = (int)(last_occurrence_ptr - str);
     } else {
         // If the character is not found, nothing to remove
         return;
     }
 
     // 2. Iterate through the string, keeping only the last occurrence and other characters
-    int read_index, write_index;
-    for (read_index = 0, write_index = 0; str[read_index] != '\0'; read_index++) {
+    for (int read_index = 0, write_index = 0; str[read_index] != '\0'; read_index++)
         // Keep the character if it's not the target character, or if it's the last occurrence
-        if (str[read_index] != char_to_keep || read_index == last_index) {
+        if (str[read_index] != char_to_keep || read_index == last_index)
             str[write_index++] = str[read_index];
-        }
-    }
     // Null-terminate the modified string
-    str[write_index] = '\0';
+    str[strlen(str)] = '\0';
 }
+
 // --- Example Usage ---
-int main(int argc, char *argv[]) {
-    const char *target_dir = argc > 1 ? argv[1] : "../Pics"; // Use argument or current directory
-    
-    printf("Searching for images in: %s\n", target_dir);
-    ImageList *images = get_all_images(target_dir);
-    
+int main() {
+    char path[1024];
+    // 1. Get user input for the directory to start listing
+    printf("Enter directory path (e.g., / or /home): ");
+    if (fgets(path, sizeof(path), stdin) == NULL) return 1;
+    path[strcspn(path, "\n")] = 0; // Remove newline character
+    // 2. Open the directory
+    DIR *dp = opendir(path);
+    if (dp == NULL) {
+        perror("opendir() error");
+        return 1;
+    }
+
+    printf("\nDirectories in %s:\n", path);
+    ImageList *images = get_all_images(path);
+
+
     printf("Found %zu images:\n", images->count);
     for (size_t i = 0; i < images->count; i++) {
         printf("%zu: %s\n", i + 1, images->filepaths[i]);
     }
-    
-    remove_all_but_last(images->filepaths[22], '.');
-
-    const char* path = "C:/Users/1toas/OneDrive/Documents/Wondows_Wallpaper_Rotator";
-    char full_path[1024];
-    // If images->filepaths[22] is "/Pics/Screenshot..."
-    snprintf(full_path, sizeof(full_path), "%s%s", path, images->filepaths[22]);
-
-    printf("Full path: %s\n", full_path);
-    // Result: C:/Users/1toas/OneDrive/Documents/Wondows_Wallpaper_Rotator/Pics/Screenshot...
-    // printf("THIS IS THE NAME: %s, %s, Combine: %s", path, images->filepaths[22], (*path + images->filepaths[22]));
-    // SPI_SETDESKWALLPAPER updates the desktop background
-    SystemParametersInfoA(SPI_SETDESKWALLPAPER, 0, (void*)full_path, SPIF_UPDATEINIFILE | SPIF_SENDWININICHANGE);
+    for (int i = 0; i < images->count; i++) {
+        remove_all_but_last(images->filepaths[i], '.');
+        printf("This image is now in rotation: %s\n", images->filepaths[i]);
+        Sleep(2000);
+        // SPI_SETDESKWALLPAPER updates the desktop background
+        SystemParametersInfoA(SPI_SETDESKWALLPAPER, 0, (void*)images->filepaths[i]/*(void*)full_path*/, SPIF_UPDATEINIFILE | SPIF_SENDWININICHANGE);
+    }
 
     // Always clean up!
     free_image_list(images);
+    closedir(dp);
+
     return 0;
 }
