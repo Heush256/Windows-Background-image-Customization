@@ -6,8 +6,11 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 
 add_executable(Wondows_Wallpaper_Rotator
 #        CJson.c
-        Nmain.c
+#        Nmain.c
         cJSON-1.7.19/cJSON.c
+#        CurrentWork.c
+#        Attempt.c
+        AttemptingAgain.c
 )
 
 target_include_directories(Wondows_Wallpaper_Rotator PRIVATE
