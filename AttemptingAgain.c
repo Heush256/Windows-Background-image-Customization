@@ -7,7 +7,8 @@
 #include <time.h>
 #include <stdbool.h>
 #include <sys/stat.h>
-#define MAXSIZE 3024
+#include <errno.h>
+#define MAXSIZE 10024
 #define INITIAL_CAPACITY 10
 const char AllowableExtensions[7][5] = {"jpg", "jpeg", "png", "webp", "bmp", "tiff", "tif"};
 typedef enum {
@@ -56,9 +57,7 @@ void add_to_list(const char* path, const char* base_path) {
         fprintf(stderr, "Memory allocation failed!\n");
         exit(1);
     }
-    strcpy(temp, base_path);
-    strcat(temp, "\\");
-    strcat(temp, path);
+    strcat(strcat(strcpy(temp, base_path), "\\"), path);
      // If we need more space
     if (image_Count >= image_Capacity) {
         image_Capacity = image_Capacity == 0 ? INITIAL_CAPACITY : image_Capacity + 3;
@@ -72,9 +71,8 @@ void add_to_list(const char* path, const char* base_path) {
     // Add the new path
     listOfImages[image_Count].filePaths = temp;
     listOfImages[image_Count].position = image_Count;
-    listOfImages[image_Count].current_Style = FIT;
-    char *last = strrchr(base_path, '/');
-    printf("%s", last);
+    const char *last = strrchr(base_path, '/');
+    // printf("%s", last);
     if (last == NULL) {
         last = strrchr(base_path, '\\');
         if (last == NULL) {
@@ -82,47 +80,41 @@ void add_to_list(const char* path, const char* base_path) {
             return;
         }
     }
-    // 2. Temporarily "cut" the string or search before that pointer
-    // We create a search limit by looking only at the string before 'last'
-     const char *second_last = last + 1;
-    if (second_last != NULL) {
-        printf("\nFolder name 1: %s\n", second_last);
+    //Temporarily cuts the string to look for the word after the last slash
+    const char *second_last = last + 1;
+    if (second_last != NULL)
+        // printf("\nFolder name 1: %s\n", second_last);
         check_Style(second_last);
-    }
-    else {
+    else
         printf("Only one slash found. No parent directory segment.\n");
-    }
 
     image_Count++;
 }
-void set_Up_Json(const char* folder_path) {
+void set_Up_Json(const char* folder_path, int position) {
     FILE* openJson = fopen("Caching.json", "w");
     if (openJson == NULL) {
         perror("There was an error in creating/opening the json");
         return;
     }
-
     //Set up the root file
     cJSON* json_Obj_root = cJSON_CreateObject();
     cJSON_AddStringToObject(json_Obj_root, "Folder_Path", folder_path);
-
     //Create a json array
     cJSON* json_Array = cJSON_CreateArray();
     //Parsing each filename in the struct into a json array
-    for (int i = 1; i < image_Count; i++) {
+    // printf("%d", position);
+    for (int i = position + 1; i < image_Count; i++) {
         cJSON *temp_Json_Storage = cJSON_CreateObject();
         cJSON_AddStringToObject(temp_Json_Storage, "Absolute_Path_Of_Images", listOfImages[i].filePaths);
         cJSON_AddNumberToObject(temp_Json_Storage, "Enum", listOfImages[i].current_Style);
         cJSON_AddItemToArray(json_Array, temp_Json_Storage);
     }
-
     cJSON_AddItemToObject(json_Obj_root, "Arrays_To_Path_Of_Images", json_Array);
     char *json_string = cJSON_Print(json_Obj_root);
     if (json_string) {
         fputs(json_string, openJson);
         free(json_string);
     }
-
     fclose(openJson);
     cJSON_Delete(json_Obj_root);
 }
@@ -214,7 +206,7 @@ void add_To_List_After(char* path, Style fitting) {
     listOfImages[image_Count].current_Style = fitting; // Default style
     image_Count++;
 }
-void get_From_Json(const cJSON *root, const char* path) {
+void get_From_Json(const cJSON *root) {
     const cJSON *images_array = cJSON_GetObjectItemCaseSensitive(root, "Arrays_To_Path_Of_Images");
     if (!cJSON_IsArray(images_array)) return;
     const cJSON *item = NULL;
@@ -225,13 +217,28 @@ void get_From_Json(const cJSON *root, const char* path) {
             add_To_List_After(path_node->valuestring, (Style) enum_node->valueint);
     }
 }
-void finish() {
+int first_file_to_exist() {
+    int i = 0;
+    while (i < image_Capacity) {
+        if (access(listOfImages[i].filePaths, F_OK) == 0)
+            break;
+        if (errno == ENOENT)
+            i++;
+        else {
+            ShowWindow(GetConsoleWindow(), SW_SHOW);
+            printf("%s", listOfImages[i].filePaths);
+            perror("File access failed"); // e.g., EACCES if permission denied
+        }
+    }
+    return i;
+}
+int finish() {
+    const int i = first_file_to_exist();
+    //Setup to get the style to be set
     HKEY hKey;
     const char* styleStr = "0";
     const char* tileStr = "0";
-
-    // Assuming your struct has a member called 'style' (e.g., listOfImages[0].style)
-    switch (listOfImages[0].current_Style) {
+    switch (listOfImages[i].current_Style) {
         case CENTER:  styleStr = "0";  tileStr = "0"; break;
         case TILE:    styleStr = "0";  tileStr = "1"; break;
         case STRETCH: styleStr = "2";  tileStr = "0"; break;
@@ -239,39 +246,70 @@ void finish() {
         case FILL:    styleStr = "10"; tileStr = "0"; break;
         case SPAN:    styleStr = "22"; tileStr = "0"; break;
     }
-    for (int i = 0; i < image_Count; i++)
-        printf("This image is here %d: %s\n", i, listOfImages[i].filePaths);
+    // for (int i = 0; i < image_Count; i++)
+    //     printf("This image is here %d: %s\n", i, listOfImages[i].filePaths);
+    //Here the 2 if statements is where the background is changed
     if (RegOpenKeyExA(HKEY_CURRENT_USER, "Control Panel\\Desktop", 0, KEY_SET_VALUE, &hKey) == ERROR_SUCCESS) {
         RegSetValueExA(hKey, "WallpaperStyle", 0, REG_SZ, (const BYTE*)styleStr, lstrlenA(styleStr) + 1);
         RegSetValueExA(hKey, "TileWallpaper", 0, REG_SZ, (const BYTE*)tileStr, lstrlenA(tileStr) + 1);
         RegCloseKey(hKey);
     }
-    if (SystemParametersInfoA(SPI_SETDESKWALLPAPER, 0, listOfImages[0].filePaths, SPIF_UPDATEINIFILE | SPIF_SENDWININICHANGE))
-        printf("Wallpaper set successfully to: %s\n", listOfImages[0].filePaths);
-    else
+    if (SystemParametersInfoA(SPI_SETDESKWALLPAPER, 0, listOfImages[i].filePaths, SPIF_UPDATEINIFILE | SPIF_SENDWININICHANGE)) {
+        // printf("Wallpaper set successfully to: %s\n", listOfImages[0].filePaths);
+    }
+    else {
+        ShowWindow(GetConsoleWindow(), SW_SHOW);
         printf("Failed to set wallpaper\n");
+    }
+    return i;
 }
 void set_Path() {
     char base_path[MAXSIZE] = "";
-    printf("Enter the path for the folders");
+    printf("Enter the path for the folders: ");
     fgets(base_path, MAXSIZE, stdin);
     base_path[strcspn(base_path, "\n")] = 0;
     search_File(base_path);
     if (image_Count > 0) {
         randomizer();
-        set_Up_Json(base_path);
+        set_Up_Json(base_path, 0);
         finish();
     }
-    else
+    else {
         printf("No images found in the specified directory 1!\n");
+        set_Path();
+    }
     free_ImageHolder();
 }
+bool check_if_path_exists(const char* path) {
+    DIR* dir = opendir(path);
+    if (dir) {
+        // printf("Directory exists.\n");
+        closedir(dir);
+        return true;
+    }
+    if (ENOENT == errno) {
+        printf("Directory does not exist.\n"
+               "The path that was there before does not exist no more :((!\n"
+               "Set the path again!");
+        set_Path();
+    }
+    else {
+        perror("opendir failed"); // Handle other errors like EACCES
+    }
+    return false;
+}
 int main() {
+    //To close terminal as it is not needed, and will be oppened when needed
+    ShowWindow(GetConsoleWindow(), SW_HIDE);
     //Setting up the program and getting the path
     FILE* openJson = fopen("Caching.json", "r");
     if (openJson == NULL) {
-        printf("Problem with file opening :))\n");
-        return 1;
+        openJson = fopen("Caching.json", "w");
+        if (openJson == NULL) {
+            ShowWindow(GetConsoleWindow(), SW_SHOW);
+            printf("Problem with file opening :))\n");
+            return 1;
+        }
     }
     // Use this for when u write the get function, this function will only run for the set
     char path_Read_From_Json[MAXSIZE];
@@ -280,27 +318,30 @@ int main() {
     fclose(openJson);
     const cJSON* root = cJSON_Parse(path_Read_From_Json);
     if (root == NULL) {
+        ShowWindow(GetConsoleWindow(), SW_SHOW);
         printf("There is no path inputted from previous entries or the current folder does not exist\n");
         set_Path();
     }
     else {
-        get_From_Json(root, root->child->valuestring);
-        const cJSON *base_path = cJSON_GetObjectItemCaseSensitive(root, "Folder_Path");
-        if (image_Count > 0) {
-        set_Up_Json(base_path->valuestring);
-            finish();
-        }
-        else {
-            printf("No images are left to cycle through! :(\nFinding new images to find.\n");
-            search_File(base_path->valuestring);
+        if (check_if_path_exists(cJSON_GetObjectItemCaseSensitive(root, "Folder_Path")->valuestring)) {
+            get_From_Json(root);
+            const cJSON *base_path = cJSON_GetObjectItemCaseSensitive(root, "Folder_Path");
             if (image_Count > 0) {
-                randomizer();
-                set_Up_Json(base_path->valuestring);
-                finish();
+                const int pos_to_send_to_json = finish();
+                set_Up_Json(base_path->valuestring, pos_to_send_to_json);
             }
-            else
-                printf("No images found in the specified directory 0!\n");
-            free_ImageHolder();
+            else {
+                // printf("No images are left to cycle through! :(\nFinding new images to find.\n");
+                search_File(base_path->valuestring);
+                if (image_Count > 0) {
+                    randomizer();
+                    const int pos_to_send_to_json = finish();
+                    set_Up_Json(base_path->valuestring, pos_to_send_to_json);
+                }
+                else
+                    printf("No images found in the specified directory 0!\n");
+                free_ImageHolder();
+            }
         }
     }
     return 0;
