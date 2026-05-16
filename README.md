@@ -1,2 +1,2 @@
-# Windows-Background-image-Customization
+# Windows-Background-image-Style-Changer
 Just cuse why not?
