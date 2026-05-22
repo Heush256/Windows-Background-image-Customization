@@ -90,7 +90,7 @@ void add_to_list(const char* path, const char* base_path) {
 
     image_Count++;
 }
-void set_Up_Json(const char* folder_path, int position) {
+void set_Up_Json(const char* folder_path, const int position) {
     FILE* openJson = fopen("Caching.json", "w");
     if (openJson == NULL) {
         perror("There was an error in creating/opening the json");
@@ -191,7 +191,7 @@ void free_ImageHolder() {
     image_Count = 0;
     image_Capacity = 0;
 }
-void add_To_List_After(char* path, Style fitting) {
+void add_To_List_After(char* path, const Style fitting) {
     if (image_Count >= image_Capacity) {
         image_Capacity = image_Capacity == 0 ? INITIAL_CAPACITY : image_Capacity + 3;
         struct ImageHolder* newList = realloc(listOfImages, image_Capacity * sizeof(struct ImageHolder));
@@ -219,7 +219,8 @@ void get_From_Json(const cJSON *root) {
 }
 int first_file_to_exist() {
     int i = 0;
-    while (i < image_Capacity) {
+    while (i < image_Count) {
+        // printf("%s, %zu, %d\n", listOfImages[i].filePaths, image_Count, i);
         if (access(listOfImages[i].filePaths, F_OK) == 0)
             break;
         if (errno == ENOENT)
@@ -232,8 +233,11 @@ int first_file_to_exist() {
     }
     return i;
 }
-int finish() {
+int finish(const char* path) {
     const int i = first_file_to_exist();
+    if (i == image_Count) {
+        search_File(path);
+    }
     //Setup to get the style to be set
     HKEY hKey;
     const char* styleStr = "0";
@@ -272,7 +276,7 @@ void set_Path() {
     if (image_Count > 0) {
         randomizer();
         set_Up_Json(base_path, 0);
-        finish();
+        finish(base_path);
     }
     else {
         printf("No images found in the specified directory 1!\n");
@@ -327,7 +331,7 @@ int main() {
             get_From_Json(root);
             const cJSON *base_path = cJSON_GetObjectItemCaseSensitive(root, "Folder_Path");
             if (image_Count > 0) {
-                const int pos_to_send_to_json = finish();
+                const int pos_to_send_to_json = finish(base_path->valuestring);
                 set_Up_Json(base_path->valuestring, pos_to_send_to_json);
             }
             else {
@@ -335,7 +339,7 @@ int main() {
                 search_File(base_path->valuestring);
                 if (image_Count > 0) {
                     randomizer();
-                    const int pos_to_send_to_json = finish();
+                    const int pos_to_send_to_json = finish(base_path->valuestring);
                     set_Up_Json(base_path->valuestring, pos_to_send_to_json);
                 }
                 else
