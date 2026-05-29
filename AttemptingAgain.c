@@ -8,7 +8,7 @@
 #include <stdbool.h>
 #include <sys/stat.h>
 #include <errno.h>
-#define MAXSIZE 10024
+#define MAXSIZE 260
 #define INITIAL_CAPACITY 10
 const char AllowableExtensions[7][5] = {"jpg", "jpeg", "png", "webp", "bmp", "tiff", "tif"};
 typedef enum {
@@ -315,9 +315,17 @@ int main() {
             return 1;
         }
     }
-    // Use this for when u write the get function, this function will only run for the set
-    char path_Read_From_Json[MAXSIZE];
-    const int bytesRead = (int)fread(path_Read_From_Json, 1, sizeof(path_Read_From_Json) - 1, openJson);
+    fseek(openJson, 0, SEEK_END);
+    const long fileSize = ftell(openJson);
+    rewind(openJson);
+    char* path_Read_From_Json = malloc(fileSize + 1);
+    if (path_Read_From_Json == NULL) {
+        // Handle memory allocation failure
+        fprintf(stderr, "Memory allocation failed\n");
+        fclose(openJson);
+        return 1;
+    }
+    const size_t bytesRead = fread(path_Read_From_Json, 1, fileSize, openJson);
     path_Read_From_Json[bytesRead] = '\0';
     fclose(openJson);
     const cJSON* root = cJSON_Parse(path_Read_From_Json);
@@ -348,5 +356,6 @@ int main() {
             }
         }
     }
+    free(path_Read_From_Json);
     return 0;
 }
