@@ -111,7 +111,6 @@ COLORREF GetAverageImageColor(const WCHAR* imagePath) {
             unsigned long long sumB[BUCKETS][BUCKETS][BUCKETS] = {0};
 
             for (int i = 0; i < (int) width * (int) height * 4; i += 4) {
-                // Aggressively ignore white backgrounds and black lines
                 if (pixels[i + 2] > 230 && pixels[i + 1] > 230 && pixels[i] > 230) continue;
                 if (pixels[i + 2] < 25 && pixels[i + 1] < 25 && pixels[i] < 25) continue;
                 counts[pixels[i + 2] / CHUNK][pixels[i + 1] / CHUNK][pixels[i] / CHUNK]++;
@@ -127,7 +126,7 @@ COLORREF GetAverageImageColor(const WCHAR* imagePath) {
                         if (counts[rIdx][gIdx][bIdx] > maxCount) {
                             maxCount = counts[rIdx][gIdx][bIdx];
 
-                            // Calculate average and apply your 0.75f darkening factor inline
+                            // 0.75f is the darkening factor
                             dominantColor = RGB((BYTE)(sumR[rIdx][gIdx][bIdx] / maxCount) * 0.75f,
                                                 (BYTE)(sumG[rIdx][gIdx][bIdx] / maxCount) * 0.75f,
                                                 (BYTE)(sumB[rIdx][gIdx][bIdx] / maxCount) * 0.75f);
@@ -154,7 +153,6 @@ WCHAR* create_L_string(const char* to_convert) {
         fprintf(stderr, "Error: to_convert string is NULL.\n");
         return NULL;
     }
-    // Allocate the temporary combined ANSI string
     char* combinedAnsiStr = malloc(strlen(FOLDER_PATH) + strlen(to_convert) + 1);
     if (combinedAnsiStr == NULL) return NULL;
     strcat(strcat(strcpy(combinedAnsiStr, FOLDER_PATH), "\\"), to_convert);
