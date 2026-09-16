@@ -1,7 +1,7 @@
 # Windows-Background-image-Style-Changer
 Windows os allows for the user to rotate their background images for different styles was lackluster. This program can also play a sound, and change the system colors too if the user wants.
 
-Uses Windows api and the cJSON library. Windows api to change registry keys to certain styles based on the folder it is in, and cJSON to easily read and write to a file.
+Uses Windows api, miniaudio-0.11.25 and the cJSON library. Windows api to change registry keys to certain styles based on the folder it is in, and cJSON to easily read and write to a file.
 
 To easily and quickly change the registry keys, below is a small look up table:
 
