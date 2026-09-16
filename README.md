@@ -1,11 +1,9 @@
 # Windows-Background-image-Style-Changer
-Just cuse why not?
+Windows os allows for the user to rotate their background images for different styles was lackluster. This program can also play a sound, and change the system colors too if the user wants.
 
-But in all seriousness, how windows os allows for the user to rotate their background images for different styles was lackluster. This program can also play a sound, and change the system colors too if the user wants.
+Uses Windows api and the cJSON library. Windows api to change registry keys to certain styles based on the folder it is in, and cJSON to easily read and write to a file.
 
-Uses Windows api to change registry keys to certain styles based on the folder it is in. 
-
-(ie.
+To easily and quickly change the registry keys, below is a small look up table:
 
     typedef struct {
     const char* styleStr;
@@ -21,4 +19,3 @@ Uses Windows api to change registry keys to certain styles based on the folder i
         { "0",  2, "1" }, // 4: TILE
         { "22", 3, "0" }  // 5: SPAN
     };
-the 1st value being the value style of the style as a str, the 2nd value being the size of the str in the 1st column, and the 3rd value being the title string)
