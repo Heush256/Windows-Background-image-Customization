@@ -7,12 +7,18 @@ Uses Windows api to change registry keys to certain styles based on the folder i
 
 (ie.
 
+    typedef struct {
+    const char* styleStr;
+    const DWORD styleSize;
+    const char* tileStr;
+    } styleStr_and_tileStr;
+    //A list to easily get the registry modes
     static const styleStr_and_tileStr REG_MODES[] ={
-    { "0",  2, "0" }, // 0: CENTER
-    { "2",  2, "0" }, // 1: STRETCH
-    { "6",  2, "0" }, // 2: FIT
-    { "10", 3, "0" }, // 3: FILL
-    { "0",  2, "1" }, // 4: TILE
-    { "22", 3, "0" }  // 5: SPAN
+        { "0",  2, "0" }, // 0: CENTER
+        { "2",  2, "0" }, // 1: STRETCH
+        { "6",  2, "0" }, // 2: FIT
+        { "10", 3, "0" }, // 3: FILL
+        { "0",  2, "1" }, // 4: TILE
+        { "22", 3, "0" }  // 5: SPAN
     };
 the 1st value being the value style of the style as a str, the 2nd value being the size of the str in the 1st column, and the 3rd value being the title string)
